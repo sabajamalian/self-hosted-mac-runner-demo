@@ -13,6 +13,10 @@ xcuserdata/
 *.dSYM.zip
 *.dSYM
 
+## Xcode derived data and build artifacts
+DerivedData/
+*.xcresult
+
 ## Playgrounds
 timeline.xctimeline
 playground.xcworkspace
@@ -60,3 +64,19 @@ fastlane/report.xml
 fastlane/Preview.html
 fastlane/screenshots/**/*.png
 fastlane/test_output
+
+# GitHub Actions self-hosted runner files
+# (never commit the runner binary, token, or work directory)
+.actions-runner/
+_work/
+actions-runner*/
+*.tar.gz
+
+# Run-scoped simulator and build artifacts (local rehearsal)
+/tmp/runner-demo-*/
+
+# macOS metadata
+.DS_Store
+.Trashes
+.Spotlight-V100
+._*

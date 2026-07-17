@@ -1,5 +1,7 @@
 # Self-Hosted macOS Runner Demo Repository
 
+> **Status: Implemented ✅** — All items in this plan have been implemented. See `README.md` for setup, usage, and troubleshooting. This file is retained as a reference for the original design intent.
+
 ## Problem and approach
 
 Create a public GitHub repository that demonstrates an Apple silicon MacBook acting as a GitHub Actions self-hosted runner. The main workflow will be manually dispatched by a trusted maintainer, build a small SwiftUI iOS app with the MacBook's installed Xcode, run unit and UI tests in a temporary iOS Simulator, capture evidence from the physical runner, and upload the results.
