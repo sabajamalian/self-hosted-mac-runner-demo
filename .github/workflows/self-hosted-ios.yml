@@ -70,19 +70,7 @@ jobs:
           if [[ -f "$UDID_FILE" ]]; then
             SIM_UDID="$(cat "$UDID_FILE")"
             if [[ -n "$SIM_UDID" ]]; then
-              SIM_DISPLAY="$(xcrun simctl list devices --json 2>/dev/null \
-                | python3 -c "
-          import json, sys
-          udid = sys.argv[1]
-          data = json.load(sys.stdin)
-          for rt, devs in data.get('devices', {}).items():
-              for d in devs:
-                  if d.get('udid') == udid:
-                      rt_short = rt.split('.')[-1].replace('-', ' ')
-                      print(d.get('name', 'Unknown') + ' / ' + rt_short)
-                      sys.exit(0)
-          print('Unknown')
-          " "$SIM_UDID" 2>/dev/null || echo "Unknown")"
+              SIM_DISPLAY="$(bash scripts/sim-display-name.sh "$SIM_UDID")"
             fi
           fi
 

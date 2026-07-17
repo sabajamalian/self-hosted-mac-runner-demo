@@ -48,6 +48,8 @@ data = json.load(sys.stdin)
 types = [
     d for d in data.get("devicetypes", [])
     if "iPhone" in d.get("name", "")
+    # Exclude Pro Max / Plus variants: they require more simulator resources
+    # and standard-size models provide consistent, reliable test environments.
     and "Max" not in d.get("name", "")
     and "Plus" not in d.get("name", "")
 ]
