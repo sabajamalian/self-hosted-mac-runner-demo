@@ -9,10 +9,6 @@ final class RunnerDemoUITests: XCTestCase {
         app.launch()
     }
 
-    override func tearDownWithError() throws {
-        app.terminate()
-    }
-
     func testPrimaryLabelIsVisible() throws {
         let primaryLabel = app.staticTexts["primaryLabel"]
         XCTAssertTrue(
