@@ -40,25 +40,7 @@ print(runtimes[0]["identifier"])
 echo "Selected runtime: $RUNTIME"
 
 # ── Select a compatible iPhone device type ────────────────────────────────────
-DEVICE_TYPE=$(xcrun simctl list devicetypes --json \
-  | python3 -c '
-import json, sys
-data = json.load(sys.stdin)
-types = [
-    d for d in data.get("devicetypes", [])
-    if "iPhone" in d.get("name", "")
-    # Exclude Pro Max / Plus variants: they require more simulator resources
-    # and standard-size models provide consistent, reliable test environments.
-    and "Max" not in d.get("name", "")
-    and "Plus" not in d.get("name", "")
-]
-if not types:
-    print("ERROR: No iPhone device types found", file=sys.stderr)
-    sys.exit(1)
-# Sort descending by name to prefer the most recent model
-types.sort(key=lambda d: d.get("name", ""), reverse=True)
-print(types[0]["identifier"])
-')
+DEVICE_TYPE="com.apple.CoreSimulator.SimDeviceType.iPhone-17"
 echo "Selected device type: $DEVICE_TYPE"
 
 # ── Create the simulator ──────────────────────────────────────────────────────
