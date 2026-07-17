@@ -41,7 +41,7 @@ echo "Selected runtime: $RUNTIME"
 
 # ── Select a compatible iPhone device type ────────────────────────────────────
 DEVICE_TYPE=$(xcrun simctl list devicetypes --json \
-  | python3 - <<'PYEOF'
+  | python3 -c '
 import json, sys
 data = json.load(sys.stdin)
 types = [
@@ -58,8 +58,7 @@ if not types:
 # Sort descending by name to prefer the most recent model
 types.sort(key=lambda d: d.get("name", ""), reverse=True)
 print(types[0]["identifier"])
-PYEOF
-)
+')
 echo "Selected device type: $DEVICE_TYPE"
 
 # ── Create the simulator ──────────────────────────────────────────────────────
