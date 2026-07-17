@@ -1,0 +1,152 @@
+name: iOS Build and Test (Self-Hosted Mac)
+
+# Only workflow_dispatch – no push, pull_request, pull_request_target, or
+# other code-execution entry points that could run untrusted code on the Mac.
+on:
+  workflow_dispatch:
+
+# Allow only one demo job on the Mac at a time.
+# cancel-in-progress: false lets a queued run wait rather than discard work.
+concurrency:
+  group: demo-mac-runner
+  cancel-in-progress: false
+
+# Least-privilege permissions: only need to read repository contents.
+permissions:
+  contents: read
+
+jobs:
+  build-and-test:
+    name: Build and Test on Self-Hosted Mac
+    runs-on: [self-hosted, macOS, ARM64, demo-mac]
+    timeout-minutes: 30
+
+    steps:
+      # ── 1. Checkout ──────────────────────────────────────────────────────────
+      - name: Checkout repository
+        # actions/checkout v4.2.2
+        uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683
+
+      # ── 2. Sanitized runner diagnostics ─────────────────────────────────────
+      - name: Gather runner diagnostics
+        run: bash scripts/runner-info.sh
+
+      # ── 3. Create and boot a run-scoped iOS simulator ────────────────────────
+      - name: Create and boot simulator
+        run: bash scripts/create-simulator.sh
+
+      # ── 4. Build and run unit + UI tests ────────────────────────────────────
+      - name: Build and run tests
+        id: tests
+        run: bash scripts/ci.sh
+
+      # ── 5. Capture simulator screenshot (best-effort) ────────────────────────
+      - name: Capture simulator screenshot
+        if: always()
+        run: |
+          UDID_FILE="$RUNNER_TEMP/simulator_udid"
+          if [[ -f "$UDID_FILE" ]]; then
+            UDID="$(cat "$UDID_FILE")"
+            if [[ -n "$UDID" ]]; then
+              xcrun simctl io "$UDID" screenshot "$RUNNER_TEMP/simulator-screenshot.png" \
+                && echo "Screenshot captured." \
+                || echo "Screenshot capture skipped (simulator may not be booted)."
+            fi
+          else
+            echo "No simulator UDID; skipping screenshot."
+          fi
+
+      # ── 6. Write job summary (no sensitive local data) ───────────────────────
+      - name: Write job summary
+        if: always()
+        run: |
+          ARCH="$(uname -m)"
+          MACOS="$(sw_vers -productVersion)"
+          XCODE="$(xcodebuild -version | head -1)"
+
+          # Resolve simulator display name from UDID (safe: names are generic)
+          SIM_DISPLAY="n/a"
+          UDID_FILE="$RUNNER_TEMP/simulator_udid"
+          if [[ -f "$UDID_FILE" ]]; then
+            SIM_UDID="$(cat "$UDID_FILE")"
+            if [[ -n "$SIM_UDID" ]]; then
+              SIM_DISPLAY="$(xcrun simctl list devices --json 2>/dev/null \
+                | python3 -c "
+          import json, sys
+          udid = sys.argv[1]
+          data = json.load(sys.stdin)
+          for rt, devs in data.get('devices', {}).items():
+              for d in devs:
+                  if d.get('udid') == udid:
+                      rt_short = rt.split('.')[-1].replace('-', ' ')
+                      print(d.get('name', 'Unknown') + ' / ' + rt_short)
+                      sys.exit(0)
+          print('Unknown')
+          " "$SIM_UDID" 2>/dev/null || echo "Unknown")"
+            fi
+          fi
+
+          TEST_RESULT="${{ steps.tests.outcome }}"
+          if [[ "$TEST_RESULT" == "success" ]]; then
+            RESULT_ICON="✅"
+          elif [[ "$TEST_RESULT" == "failure" ]]; then
+            RESULT_ICON="❌"
+          else
+            RESULT_ICON="⚠️"
+          fi
+
+          {
+            echo "## iOS Build and Test Summary"
+            echo ""
+            echo "| Item | Value |"
+            echo "|------|-------|"
+            echo "| Architecture | \`$ARCH\` |"
+            echo "| macOS | \`$MACOS\` |"
+            echo "| Xcode | \`$XCODE\` |"
+            echo "| Simulator / Runtime | \`$SIM_DISPLAY\` |"
+            echo "| Test Result | $RESULT_ICON \`$TEST_RESULT\` |"
+          } >> "$GITHUB_STEP_SUMMARY"
+
+      # ── 7. Collect artifacts ─────────────────────────────────────────────────
+      - name: Prepare artifacts
+        if: always()
+        run: |
+          ARTIFACT_DIR="$RUNNER_TEMP/artifacts"
+          mkdir -p "$ARTIFACT_DIR"
+
+          # Sanitized runner diagnostics
+          bash scripts/runner-info.sh > "$ARTIFACT_DIR/runner-diagnostics.txt" 2>&1 || true
+
+          # xcodebuild log
+          [[ -f "$RUNNER_TEMP/xcodebuild.log" ]] \
+            && cp "$RUNNER_TEMP/xcodebuild.log" "$ARTIFACT_DIR/" || true
+
+          # Simulator screenshot
+          [[ -f "$RUNNER_TEMP/simulator-screenshot.png" ]] \
+            && cp "$RUNNER_TEMP/simulator-screenshot.png" "$ARTIFACT_DIR/" || true
+
+          # Zip xcresult bundle – upload-artifact skips dotfiles inside bundles;
+          # zipping ensures all internal files are preserved.
+          if [[ -d "$RUNNER_TEMP/TestResults.xcresult" ]]; then
+            (cd "$RUNNER_TEMP" && zip -r "$ARTIFACT_DIR/TestResults.xcresult.zip" \
+              "TestResults.xcresult" -x "*.DS_Store")
+          fi
+
+          echo "Artifact directory contents:"
+          ls -lh "$ARTIFACT_DIR"
+
+      # ── 8. Upload artifacts ──────────────────────────────────────────────────
+      - name: Upload test artifacts
+        if: always()
+        # actions/upload-artifact v4.6.2
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
+        with:
+          name: ios-test-results-${{ github.run_id }}
+          path: ${{ runner.temp }}/artifacts/
+          retention-days: 5
+          if-no-files-found: warn
+
+      # ── 9. Cleanup (always runs, including on cancellation) ──────────────────
+      - name: Cleanup simulator and build data
+        if: always()
+        run: bash scripts/cleanup.sh
