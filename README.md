@@ -84,9 +84,7 @@ You can run every script locally before the live GitHub Actions demo:
 bash scripts/runner-info.sh
 
 # 2. Create and boot a temporary simulator
-bash scripts/create-simulator.sh
-# Note: scripts/create-simulator.sh sets RUNNER_TEMP automatically when running locally.
-# To reuse the same RUNNER_TEMP across steps, export it first:
+# Export RUNNER_TEMP first so subsequent scripts use the same run-scoped directory.
 export RUNNER_TEMP="$(mktemp -d /tmp/runner-demo-XXXXXX)"
 bash scripts/create-simulator.sh
 
