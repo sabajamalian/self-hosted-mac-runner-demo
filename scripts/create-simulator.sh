@@ -24,7 +24,7 @@ echo "Simulator name: $SIM_NAME"
 
 # ── Select newest available iOS runtime ──────────────────────────────────────
 RUNTIME=$(xcrun simctl list runtimes --json \
-  | python3 - <<'PYEOF'
+  | python3 -c '
 import json, sys
 data = json.load(sys.stdin)
 runtimes = [
@@ -36,8 +36,7 @@ if not runtimes:
     sys.exit(1)
 runtimes.sort(key=lambda r: r.get("version", "0"), reverse=True)
 print(runtimes[0]["identifier"])
-PYEOF
-)
+')
 echo "Selected runtime: $RUNTIME"
 
 # ── Select a compatible iPhone device type ────────────────────────────────────
