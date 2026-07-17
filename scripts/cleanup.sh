@@ -29,7 +29,7 @@ else
     echo "=== Cleaning up simulator: $SIMULATOR_UDID ==="
 
     # Check whether the simulator still exists
-    if xcrun simctl list devices --json 2>/dev/null | grep -q "$SIMULATOR_UDID"; then
+    if xcrun simctl list devices --json 2>/dev/null | grep -F "$SIMULATOR_UDID" >/dev/null; then
       echo "Shutting down simulator..."
       xcrun simctl shutdown "$SIMULATOR_UDID" 2>/dev/null || true
 
