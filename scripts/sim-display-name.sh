@@ -20,7 +20,7 @@ data = json.load(sys.stdin)
 for rt, devs in data.get('devices', {}).items():
     for d in devs:
         if d.get('udid') == udid:
-            rt_short = rt.split('.')[-1].replace('-', ' ')
+            rt_short = rt.rsplit('.', 1)[-1].replace('iOS-', 'iOS', 1)
             print(d.get('name', 'Unknown') + ' / ' + rt_short)
             sys.exit(0)
 print('Unknown')
